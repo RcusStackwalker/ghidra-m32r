@@ -12,4 +12,15 @@
         <description>m32r</description>
         <compiler name="default" spec="m32r.cspec" id="default"/>
     </language>
+	<language processor="M32R"
+              endian="big"
+              size="32"
+              variant="fp8000"
+              version="1.0"
+              slafile="m32r-fp8000.sla"
+              processorspec="m32r.pspec"
+              id="m32r:2:fp8000">
+        <description>m32r</description>
+        <compiler name="default" spec="m32r.cspec" id="default"/>
+    </language>
 </language_definitions>
