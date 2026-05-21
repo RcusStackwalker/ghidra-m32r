@@ -10,9 +10,7 @@ define register offset=0x40 size=4 [ PSW CBR SPI SPU CR4 CR5 BPC FPSR PC];
 
 define register offset=0x100 size=8 [ ACC ];
 
-
 @define C		"PSW[0,1]"		# migrate to this
-#@define C		"CBR[0,1]"		# migrate to this
 #@define C_flag	"PSW[0,1]"		# C: 	Condition Bit
 @define IE		"PSW[6,1]"		# IE:	Interrupt Enable Bit
 @define SM		"PSW[7,1]"		# SM:	Stack Mode Bit
@@ -69,7 +67,13 @@ define token data16 (16)
 	imm16	= (0,15)
 	rel16	= (0,15) signed
 	simm16	= (0,15) signed
+	Rdest_B = (8,11)
+	op1_B   = (12,15)
+	Rsrc_B  = (0,3)
+	op3_B   = (4,7)
 ;
+
+attach variables [ Rdest_B Rsrc_B ] [ R0 R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 FP R14 SP];
 
 macro setAddFlags(op1,op2) {
 	#$(C_flag) = carry(op1,op2);
@@ -115,14 +119,52 @@ FP_ADDRESS:	rel					is	rel16	[ rel = rel16 + $(FP_VALUE); ] { export &:4 rel; }
 	Rdest = Rsrc + simm16;
 }
 
-:ADDX	Rdest, Rsrc				is op1=0 & Rdest; op3=9 & Rsrc {
-	local tmp = Rdest + Rsrc;
+
+#:b31R0	is op1=0; op3=9 { $(C) = (R0[31,1] == 1); }
+#:b31R0	is op12=0x00; op34=0x90 { local tmp = R0 & (1 << 31); $(C) = (tmp != 0); CBR = zext(tmp != 0); }
+#:b31R1	is op12=0x01; op34=0x91 { local tmp = R1 & (1 << 31); $(C) = (tmp != 0); CBR = zext(tmp != 0); }
+#:b31R2	is op12=0x02; op34=0x92 { local tmp = R2 & (1 << 31); $(C) = (tmp != 0); CBR = zext(tmp != 0); }
+#:b31R3	is op12=0x03; op34=0x93 { local tmp = R3 & (1 << 31); $(C) = (tmp != 0); CBR = zext(tmp != 0); }
+#:b31R4	is op12=0x04; op34=0x94 { local tmp = R4 & (1 << 31); $(C) = (tmp != 0); CBR = zext(tmp != 0); }
+#:b31R5	is op12=0x05; op34=0x95 { local tmp = R5 & (1 << 31); $(C) = (tmp != 0); CBR = zext(tmp != 0); }
+#:b31R6	is op12=0x06; op34=0x96 { local tmp = R6 & (1 << 31); $(C) = (tmp != 0); CBR = zext(tmp != 0); }
+#:b31R7	is op12=0x07; op34=0x97 { local tmp = R7 & (1 << 31); $(C) = (tmp != 0); CBR = zext(tmp != 0); }
+#:b31R8	is op12=0x08; op34=0x98 { local tmp = R8 & (1 << 31); $(C) = (tmp != 0); CBR = zext(tmp != 0); }
+#:b31R9	is op12=0x09; op34=0x99 { local tmp = R9 & (1 << 31); $(C) = (tmp != 0); CBR = zext(tmp != 0); }
+#:b31R10	is op12=0x0a; op34=0x9a { local tmp = R10 & (1 << 31); $(C) = (tmp != 0); CBR = zext(tmp != 0); }
+#:b31R11	is op12=0x0b; op34=0x9b { local tmp = R11 & (1 << 31); $(C) = (tmp != 0); CBR = zext(tmp != 0); }
+#:b31R12	is op12=0x0c; op34=0x9c { local tmp = R12 & (1 << 31); $(C) = (tmp != 0); CBR = zext(tmp != 0); }
+
+
+#:ADDX	Rdest, Rsrc				is op1=0 & Rdest; op3=9 & Rsrc {
+	#orig local tmp = Rdest + Rsrc;
 	#local tmp2 = tmp + zext($(C_flag));
-	local tmp2 = tmp + zext($(C));
+	#orig local tmp2 = tmp + zext($(C));
 	#$(C_flag) = (carry(Rdest, Rsrc) | carry(tmp, tmp2));
-	$(C) = (carry(Rdest, Rsrc) | carry(tmp, tmp2));
-	CBR = zext(carry(Rdest, Rsrc) | carry(tmp, tmp2));
-	Rdest = Rdest + Rsrc + CBR;
+	#orig $(C) = (carry(Rdest, Rsrc) | carry(tmp, tmp2));
+	#orig CBR = zext(carry(Rdest, Rsrc) | carry(tmp, tmp2));
+	#orig Rdest = Rdest + Rsrc + CBR;
+#	local tmp = Rdest + Rsrc;
+#	local tmp2 = tmp + zext($(C));
+#	$(C) = carry(Rdest, Rsrc) || carry(tmp, tmp2);
+#	Rdest = tmp2;
+#	CBR = zext($(C));
+#}
+
+:ADDX	Rdest_B, Rsrc_B				is op1_B=0 & Rdest_B & op3_B=9 & Rsrc_B {
+	local tmp = Rdest_B + Rsrc_B;
+	local tmp2 = tmp + zext($(C));
+	$(C) = carry(Rdest_B, Rsrc_B) || carry(tmp, tmp2);
+	Rdest_B = tmp2;
+	CBR = zext($(C));
+}
+
+
+:TSTb31 Rdest_B is op1_B=0 & Rdest_B & Rdest_B=Rsrc_B & op3_B=9 {
+	local tmp = Rdest_B & (1 << 31);
+	Rdest_B = Rdest_B << 1;
+	$(C) = (tmp != 0);
+	CBR = zext(tmp != 0);
 }
 
 :AND	Rdest, Rsrc				is op1=0 & Rdest; op3=12 & Rsrc {
@@ -349,6 +391,10 @@ FP_ADDRESS:	rel					is	rel16	[ rel = rel16 + $(FP_VALUE); ] { export &:4 rel; }
 
 :LDH	Rdest, "@("rel16, Rsrc")"	is op1=10 & Rdest; op3=10 & Rsrc; rel16 {
 	Rdest = sext(*:2 Rsrc + rel16);
+}
+
+:LDH	Rdest, "@fp("FPREL_2")"	is op1=10 & Rdest; op3=10 & Rsrc=13; FPREL_2 {
+	Rdest = sext(FPREL_2);
 }
 
 :LDI	Rdest,"#"simm8			is op1=6 & Rdest; simm8 {
