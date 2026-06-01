@@ -29,6 +29,8 @@ set_c = re.compile(r'\$\(C\)\s*=')
 set_cbr = re.compile(r'\bCBR\s*=')
 
 for i, line in enumerate(lines):
+    if line.lstrip().startswith('#'):
+        continue
     if set_c.search(line):
         window = lines[i:i+4]
         if not any(set_cbr.search(w) for w in window):

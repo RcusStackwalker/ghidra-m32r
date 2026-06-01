@@ -7,6 +7,18 @@ define register offset=0 size=4
 	[ R0 R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 FP R14 SP ];
 
 define register offset=0x40 size=4 [ PSW CBR SPI SPU CR4 CR5 BPC FPSR PC];
+# CBR (CR1) is the Condition Bit Register — a dedicated 32-bit read-only register that
+# mirrors the C bit (bit 31/LSB) of PSW (CR0).  Hardware keeps them in sync: every write
+# to PSW.C is automatically reflected in CBR.  Reference: 32170/32174 Group User's Manual
+# (Renesas, Rev.2.1, 2003) §2.3.1 p.2-4 (PSW layout) and §2.3.2 p.2-5 (CBR description).
+#
+# Why BC/BNC read CBR instead of $(C) = PSW[0,1]:
+# Both are architecturally equivalent on the CPU.  However Ghidra's decompiler tracks
+# dataflow through full-register writes far better than through 1-bit bitfield writes.
+# Using $(C)/PSW[0,1] causes the decompiler to lose the def-use chain from the setter
+# (TSTb31, CMP, ADDV …) to the branch, producing "while( true )" and "undefined"
+# temporaries.  Writing CBR = zext(…) alongside $(C) = … gives the decompiler a clean
+# full-register def-use edge while keeping PSW.C architecturally correct.
 
 define register offset=0x100 size=8 [ ACC ];
 
