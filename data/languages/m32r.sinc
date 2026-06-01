@@ -78,6 +78,7 @@ attach variables [ Rdest_B Rsrc_B ] [ R0 R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 
 macro setAddFlags(op1,op2) {
 	#$(C_flag) = carry(op1,op2);
 	$(C) = carry(op1,op2);
+	CBR = zext($(C));
 }
 
 REL8:		reloc				is	rel8	[ reloc = (inst_start & 0xFFFFFFFC) + (rel8 << 2); ] { export *:4 reloc; }
@@ -162,7 +163,6 @@ FP_ADDRESS:	rel					is	rel16	[ rel = rel16 + $(FP_VALUE); ] { export &:4 rel; }
 
 :TSTb31 Rdest_B is op1_B=0 & Rdest_B & Rdest_B=Rsrc_B & op3_B=9 {
 	local tmp = Rdest_B & (1 << 31);
-	Rdest_B = Rdest_B << 1;
 	$(C) = (tmp != 0);
 	CBR = zext(tmp != 0);
 }
@@ -177,12 +177,12 @@ FP_ADDRESS:	rel					is	rel16	[ rel = rel16 + $(FP_VALUE); ] { export &:4 rel; }
 
 :BC		REL8					is op12=0x7C; REL8 {
 	#if ($(C_flag) == 1) goto REL8;
-	if ($(C) == 1) goto REL8;
+	if (CBR == 1) goto REL8;
 }
 
 :BC		REL24					is op12=0xFC; REL24 {
 	#if ($(C_flag) == 1) goto REL24;
-	if ($(C) == 1) goto REL24;
+	if (CBR == 1) goto REL24;
 }
 
 :BCLR	"#"bitpos, "@("rel16,Rsrc")"	is op1=10 & op2_1=0 & bitpos; op3=7 & Rsrc; rel16 {
@@ -234,12 +234,12 @@ FP_ADDRESS:	rel					is	rel16	[ rel = rel16 + $(FP_VALUE); ] { export &:4 rel; }
 
 :BNC	REL8					is op12=0x7D; REL8 {
 	#if ($(C_flag) == 0) goto REL8;
-	if ($(C) == 0) goto REL8;
+	if (CBR == 0) goto REL8;
 }
 
 :BNC	REL24					is op12=0xFD; REL24 {
 	#if ($(C_flag) == 0) goto REL24;
-	if ($(C) == 0) goto REL24;
+	if (CBR == 0) goto REL24;
 }
 
 :BNE	Rsrc1, Rsrc2, REL16		is op1=11 & Rsrc1; Rsrc2 & op3=1; REL16 {
